@@ -1,20 +1,23 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Todo</title>
-  </head>
-  <body>
+{% extends 'todo/main.html' %}
+{% block content %}
+    <div class="header-bar">
+    <div>
+        <h1>Hello <p>{{request.user|title}}</p></h1>
+        <h3 style="margin:0">You have <i>{{count}}</i> incomplete task{{ count|pluralize:"s" }}</h3>
+    </div>
+
     {% if request.user.is_authenticated %}
-    <p>{{request.user}}</p>
     <a href="{% url 'logout' %}">Logout</a>
     {% else %}
     <a href="{% url 'login' %}">Login</a>
     {% endif %}
+    </div>
     <h1>My todo list</h1>
     <a href="{% url 'task-create'%}">Add task</a>
+    <form  method="get">
+    <input type="text" name="search-area">
+    <input type="submit" value="search">
+    </form>
     <table>
       <tr>
         <th>Item</th>
@@ -32,5 +35,4 @@
       <h3>No items</h3>
       {% endfor %}
     </table>
-  </body>
-</html>
+ {% endblock content %}

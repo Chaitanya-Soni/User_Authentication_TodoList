@@ -1,12 +1,15 @@
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from . models import todo
 from django.http import HttpResponse
 from django.urls import reverse_lazy
 from django.views.generic import ListView
 from django.views.generic import DetailView
-from django.views.generic import CreateView, UpdateView ,DeleteView
+from django.views.generic import CreateView, UpdateView ,DeleteView,FormView
+from django.contrib.auth.mixins import LoginRequiredMixin
 
 from django.contrib.auth.views import LoginView
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth import login
 
 class CustomLoginView(LoginView):
     template_name = 'todo/login.html'
@@ -15,22 +18,55 @@ class CustomLoginView(LoginView):
     def get_success_url(self):
         return reverse_lazy('tasks')
 
-class TaskList( ListView):
+class RegisterPage(FormView):
+    template_name = 'todo/signin.html'
+    form_class = UserCreationForm
+    redirect_authenticated_user = True
+    success_url = reverse_lazy('tasks')
+    def form_valid(self, form):
+        user = form.save()
+        if user is not None:
+            login(self.request, user)
+        return super(RegisterPage, self).form_valid(form)
+    def get(self, *args, **kwargs):
+        if self.request.user.is_authenticated:
+            return redirect('tasks')
+        return super(RegisterPage, self).get(*args, **kwargs)
+
+    
+class TaskList(LoginRequiredMixin, ListView):
     model = todo
     context_object_name = 'tasks'
-class TaskDetail( DetailView):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['tasks'] = context['tasks'].filter(user=self.request.user)
+        context['count'] = context['tasks'].filter(status=False).count()
+        search_input = self.request.GET.get('search-area') or ''
+        if search_input:
+            context['tasks'] = context['tasks'].filter(title__contains=search_input)
+
+        return context
+
+class TaskDetail(LoginRequiredMixin, DetailView):
     model = todo
     context_object_name = 'task'
     template_name = 'todo/task.html'
-class TaskCreate(CreateView):
+class TaskCreate(LoginRequiredMixin,CreateView):
     model = todo
-    fields = '__all__'
+    fields = ['title','description','status']
     success_url = reverse_lazy('tasks')
-class TaskUpdate(UpdateView):
+    def form_valid(self, form):
+        form.instance.user = self.request.user
+        return super(TaskCreate, self).form_valid(form)
+
+class TaskUpdate(LoginRequiredMixin,UpdateView):
     model = todo
-    fields = '__all__'
+    fields = ['title','description','status']
     success_url = reverse_lazy('tasks')
-class TaskDelete(DeleteView):
+    def form_valid(self, form):
+        form.instance.user = self.request.user
+        return super(TaskCreate, self).form_valid(form)
+class TaskDelete(LoginRequiredMixin,DeleteView):
     model = todo
     context_object_name = 'task'
     success_url = reverse_lazy('tasks') 
